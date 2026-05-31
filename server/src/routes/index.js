@@ -5,7 +5,12 @@ const { query } = require("../db/connection");
 // Products
 router.get("/products", async (req, res) => {
   try {
-    const rows = await query("SELECT * FROM PRODUCTS");
+    const rows = await query(`
+  SELECT p.number, p.name, p.description, p.grammage, p.price, p.quantity,
+         p.manname, p.catno, c.name AS category
+  FROM Products p
+  JOIN Categories c ON p.catno = c.number
+`);
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -81,5 +86,71 @@ router.get("/orders/:id/items", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// POST /api/products
+router.post("/products", async (req, res) => {
+  const { name, description, grammage, price, quantity, manname, catno } =
+    req.body;
+  console.log("catno raw:", catno, "| as Number:", Number(catno));
+  try {
+    await query(
+      `INSERT INTO Products (name, description, grammage, price, quantity, manname, catno)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        description,
+        Number(grammage),
+        Number(price),
+        Number(quantity),
+        manname,
+        Number(catno),
+      ],
+    );
+    res.status(201).json({ message: "Product created" });
+  } catch (err) {
+    console.error("INSERT failed:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/products/:id
+router.put("/products/:id", async (req, res) => {
+  const { name, description, grammage, price, quantity, manname, catno } =
+    req.body;
+  try {
+    await query(
+      `UPDATE Products SET name=?, description=?, grammage=?, price=?, quantity=?, manname=?, catno=?
+       WHERE number=?`,
+      [
+        name,
+        description,
+        Number(grammage),
+        Number(price),
+        Number(quantity),
+        manname,
+        Number(catno),
+        Number(req.params.id),
+      ],
+    );
+    res.json({ message: "Product updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/products/:id
+router.delete("/products/:id", async (req, res) => {
+  try {
+    await query("DELETE FROM Products WHERE number=?", [Number(req.params.id)]);
+    res.json({ message: "Product deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/debug-products-cols", async (req, res) => {
+  const rows = await query("SELECT * FROM Products FETCH FIRST 1 ROWS ONLY");
+  res.json(rows);
 });
 module.exports = router;
